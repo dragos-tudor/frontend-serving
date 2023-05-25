@@ -1,0 +1,1 @@
+export { cacheMiddleware } from "./middlewares/middleware.js"

@@ -1,0 +1,51 @@
+name: "main-ci"
+
+on:
+  push:
+    branches:
+      - "main"
+    tags-ignore:
+      - 'v*'
+  pull_request:
+    branches:
+      - "main"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.head_ref  }}
+  cancel-in-progress: true
+
+jobs:
+  main:
+    name: 'main job'
+    timeout-minutes: 1
+
+    permissions:
+      contents: write
+
+    runs-on: [self-hosted]
+
+    env:
+      DENO_AUTH_TOKENS: ${{ secrets.GH_TOKEN }}@raw.githubusercontent.com
+
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v3
+
+      - name: Seup Deno
+        uses: denoland/setup-deno@v1.1.0
+        with:
+          deno-version: v1.20.3
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.deno
+            ~/.cache/deno
+          key: ${{ hashFiles('**deps*.json') }}
+
+      - name: Lint
+        run: deno lint --ignore=./dist .
+
+      - name: Test and coverage
+        run: deno task -q coverage .

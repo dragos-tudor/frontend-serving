@@ -1,0 +1,1 @@
+export { errorsMiddleware } from "./middlewares/middleware.js"

@@ -1,0 +1,48 @@
+name: "dev-ci"
+
+on:
+  push:
+    branches:
+      - "dev"
+    tags-ignore:
+      - 'v*'
+  pull_request:
+    branches:
+      - "dev"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  dev:
+    name: 'dev job'
+    timeout-minutes: 1
+
+    permissions:
+      contents: write
+
+    runs-on: [self-hosted]
+
+    env:
+      DENO_AUTH_TOKENS: ${{ secrets.GH_TOKEN }}@raw.githubusercontent.com
+
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v3
+
+      - name: Seup Deno
+        uses: denoland/setup-deno@v1.1.0
+        with:
+          deno-version: v1.22.0
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.deno
+            ~/.cache/deno
+          key: ${{ hashFiles('**deps*.json') }}
+
+      - name: Test
+        run: deno task -q test .

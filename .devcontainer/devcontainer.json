@@ -1,0 +1,21 @@
+{
+	"image": "devcontainer:1.0.0",
+  "customizations": {
+	  "extensions": [
+		  "denoland.vscode-deno"
+	  ]
+  },
+	"mounts": [
+	  "source=/mnt/sdc1/binaries/deno/1.34.0,target=/.deno,type=bind"
+	],
+	"containerEnv": {
+		"DENO_AUTH_TOKENS": "${localEnv:GITHUB_TOKEN}@raw.githubusercontent.com"
+	},
+	"remoteEnv": {
+		"PATH": "${containerEnv:PATH}:/.deno"
+	},
+	"runArgs": [
+		"--name=frontend-serving",
+		"--hostname=frontend-serving"
+	]
+}

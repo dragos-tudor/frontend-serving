@@ -1,0 +1,13 @@
+# IDE specific files
+.ionide/
+.vscode/
+
+# API keys and secrets
+.env
+
+# JS dist directory
+dist/
+
+# Code Coverage results
+coverage/
+test/coverage
