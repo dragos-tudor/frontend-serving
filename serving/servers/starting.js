@@ -4,7 +4,6 @@ import { ContextOptions } from "../options/ContextOptions.js"
 import { ServerOptions } from "../options/ServerOptions.js"
 import { addAbortSignalOptions, addAlpnProtocolsOptions } from "../options/adding.js"
 import { ensureDefaultOptions } from "../options/ensuring.js"
-import { guardParam } from "../params/guarding.js"
 import { isTlsServer } from "./verifying.js"
 
 /**
@@ -14,12 +13,12 @@ import { isTlsServer } from "./verifying.js"
  * @returns {{close: function}} Return http server.
 */
 export const startServer = (requestHandler, options = ServerOptions) => {
-  guardParam("handler", requestHandler, "function")
   const serverOptions = ensureDefaultOptions(ServerOptions, options)
   const contextOptions = ensureDefaultOptions(ContextOptions, options.context)
 
   const startMessage = `${isTlsServer(options)?"https":"http"}://${options.hostname}:${options.port}`
-  logInfo(true, `server address: ${startMessage}`)
+  logInfo(true, "server address", startMessage)
+  logInfo(true, "current working directory", contextOptions.cwd)
 
   const abortCtrl = new AbortController()
   addAbortSignalOptions(serverOptions, abortCtrl)

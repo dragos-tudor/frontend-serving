@@ -37,7 +37,7 @@
 #### [Evaluating middleware](./middlewares-evaluating/)
 - server side js code evaluation.
 
-#### Serving notes
+#### Observations
 - based on *middlewares architecture* [similar to ASPNET midlewares].
 - middlewares are chained to build request/response http pipes.
 - started servers should be closed to avoid Deno resouces leaks errors [for integration tests].

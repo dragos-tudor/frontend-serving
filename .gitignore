@@ -11,3 +11,6 @@ dist/
 # Code Coverage results
 coverage/
 test/coverage
+
+# Deno lock file
+deno.lock

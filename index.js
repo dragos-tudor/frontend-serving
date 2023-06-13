@@ -85,12 +85,9 @@ const createUnauthorizedResponse = ()=>new Response(UNAUTHORIZED, {
         }),
         status: 401
     });
-const toJsonBody = (body)=>{
-    if (typeof body === "string") return body;
-    if (body != undefined) return JSON.stringify(body);
-    return null;
-};
-const APPLICATION_JSON = "application/json";
+const existsBody = (body)=>body != undefined;
+const isStringBody = (body)=>typeof body === "string";
+const toJsonBody = (body)=>isStringBody(body) && body || existsBody(body) && JSON.stringify(body) || null;
 const createResponse = (body, contentType, statusCode = 200)=>new Response(body, {
         headers: new Headers({
             [CONTENT_LENGTH]: (body?.length ?? 0).toString(),
@@ -98,7 +95,7 @@ const createResponse = (body, contentType, statusCode = 200)=>new Response(body,
         }),
         status: statusCode
     });
-const createJsonResponse = (body, statusCode = 200)=>createResponse(toJsonBody(body), APPLICATION_JSON, statusCode);
+const createJsonResponse = (body, statusCode = 200)=>createResponse(toJsonBody(body), MediaTypes[".json"], statusCode);
 export { createBadRequestResponse as createBadRequestResponse };
 export { createForbiddenResponse as createForbiddenResponse };
 export { createNoContentResponse as createNoContentResponse };
@@ -109,104 +106,99 @@ export { createServerErrorResponse as createServerErrorResponse };
 export { createUnauthorizedResponse as createUnauthorizedResponse };
 export { createJsonResponse as createJsonResponse, createResponse as createResponse };
 export { MediaTypes as MediaTypes };
-const chainMiddlewares = (middlewares)=>middlewares.length ? Array.from(middlewares).reverse().reduce((acc, middleware)=>middleware(acc), createNotFoundResponse) : createNotFoundResponse;
-const getUrlPath = (request)=>{
-    const url = new URL(request.url);
-    return url.pathname === "/" ? "/index.html" : url.pathname;
-};
-const getUrlSearchParams = (request)=>new URL(request.url).search;
-const reduceSearchParams = (obj, param)=>{
+const chainMiddlewares = (middlewares, lastMiddleware = createNotFoundResponse)=>Array.from(middlewares).reverse().reduce((acc, middleware)=>middleware(acc), lastMiddleware);
+const RootPath = "/";
+const isRootPath = (request)=>new URL(request.url).pathname === RootPath;
+const RootHtml = "/index.html";
+const getUrlPathName = (url)=>new URL(url).pathname;
+const getUrlSearch = (url)=>new URL(url).search;
+const getUrlPath = (request)=>isRootPath(request) ? RootHtml : getUrlPathName(request.url);
+const getUrlSearchParams = (request)=>getUrlSearch(request.url);
+const setSearchParam = (obj, param)=>{
     const [name, value] = decodeURIComponent(param).split("=");
     return Object.assign(obj, {
         [name]: value
     });
 };
-const toUrlSearchParamsObj = (request)=>getUrlSearchParams(request).replace("?", "").split("&").reduce(reduceSearchParams, {});
+const toSearchParams = (request)=>getUrlSearchParams(request).replace("?", "").split("&").reduce(setSearchParam, {});
 const getTimeNow = ()=>new Date(Date.now()).toISOString();
 const logInfo = (enabled, ...args)=>enabled && console.info(green("[serving]"), getTimeNow(), ...args);
 const logError = (enabled, error)=>enabled && console.error(red("[serving]"), getTimeNow(), error);
 const toHexString = (__byte)=>__byte.toString(16).padStart(2, "00");
-const getFileEtag = async (lastModified, size)=>{
+const getEncodedTag = (lastModified, size)=>{
     const jsonLastModified = new Date(lastModified).toJSON();
     const rawEtag = `${jsonLastModified}${size}`;
-    const encodedRawEtag = new TextEncoder().encode(rawEtag);
-    const hashType = "SHA-1";
-    const hashBuffer = await crypto.subtle.digest(hashType, encodedRawEtag);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const etag = hashArray.map(toHexString).join("");
-    return etag;
+    const encodedEtag = new TextEncoder().encode(rawEtag);
+    return encodedEtag;
 };
-const getFileInfo = (dir, url)=>Deno.stat(`${dir}${url}`);
-const isExistingLastModifiedDate = (lastModified)=>lastModified instanceof Date;
+const getHexStringTag = async (encodedEtag)=>{
+    const hashType = "SHA-1";
+    const hashBuffer = await crypto.subtle.digest(hashType, encodedEtag);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(toHexString).join("");
+};
+const getFileEtag = async (lastModified, size)=>{
+    const encodedRawEtag = getEncodedTag(lastModified, size);
+    return await getHexStringTag(encodedRawEtag);
+};
+const getFileInfo = (cwd, url)=>Deno.stat(`${cwd}${url}`);
+const existsLastModifiedDate = (lastModified)=>lastModified instanceof Date;
 const getIfNoneMatchHeader = (headers)=>headers.get("If-None-Match");
 const setETagHeader = (headers, etag)=>headers.set("ETag", etag);
-const isExistingFile = (filePath)=>exists(filePath);
+const existsFile = (filePath)=>exists(filePath);
 const isGzipFile = (fileContent)=>fileContent[0] === 0x1F && fileContent[1] === 0x8B;
+const setHeaderContentLength = (headers, fileContent)=>headers.set("content-length", fileContent.length.toString());
+const setHeaderContentType = (headers, mediaType)=>headers.set("content-type", mediaType || "application/octet-stream");
+const setHeaderContentEncoding = (headers, encoding)=>headers.set("content-encoding", encoding);
 const getFileHeaders = (fileContent, fileExtension)=>{
     const headers = new Headers();
     const mediaType = MediaTypes[fileExtension];
-    headers.set("content-length", fileContent.length.toString());
-    headers.set("content-type", mediaType || "application/octet-stream");
-    if (isGzipFile(fileContent)) headers.set("content-encoding", "gzip");
+    setHeaderContentLength(headers, fileContent);
+    setHeaderContentType(headers, mediaType);
+    if (isGzipFile(fileContent)) setHeaderContentEncoding(headers, "gzip");
     return headers;
 };
 const getFileExtension = (fileName)=>extname(fileName);
-const getFilePath = (dir, url)=>`${dir}${url}`;
-const findFileCompiler = (filePath, compilers)=>compilers.find((compiler)=>compiler.extensions?.includes(getFileExtension(filePath)));
-const resolveFileContent = (filePath, compiler)=>compiler ? compiler.compileFile(filePath) : Deno.readFile(filePath);
+const getFilePath = (cwd, url)=>`${cwd}${url}`;
+const existsFileCompiler = (compiler, fileExtension)=>compiler.extensions?.includes(fileExtension);
+const findFileCompiler = (compilers, filePath)=>compilers.find((compiler)=>existsFileCompiler(compiler, getFileExtension(filePath)));
 const isRootFileRequest = (request)=>getUrlPath(request) === "/";
 const isFileRequest = (request)=>isRootFileRequest(request) || !!extname(getUrlPath(request));
 const createFileResponse = (fileContent, fileExtension)=>fileContent.length ? createOkResponse(fileContent, getFileHeaders(fileContent, fileExtension)) : createNoContentResponse();
 const filesMiddleware = (compilers = [])=>(next)=>async (request, context = {})=>{
-            const { dir , logEnabled  } = context;
+            const { cwd , logEnabled  } = context;
             if (isFileRequest(request) === false) return next(request, context);
-            const filePath = getFilePath(dir, getUrlPath(request));
-            if (!await isExistingFile(filePath)) return createNotFoundResponse();
-            const compiler = findFileCompiler(filePath, compilers);
-            const fileContent = await resolveFileContent(filePath, compiler);
-            logInfo(logEnabled, `files middleware: ${getUrlPath(request)}`);
+            const filePath = getFilePath(cwd, getUrlPath(request));
+            if (!await existsFile(filePath)) return createNotFoundResponse();
+            const compiler = findFileCompiler(compilers, filePath);
+            const fileContent = await (compiler?.compileFile || Deno.readFile)(filePath);
+            logInfo(logEnabled, "files middleware:", getUrlPath(request));
             return createFileResponse(fileContent, getFileExtension(filePath));
         };
 const isGetRequest = (request)=>request.method.toUpperCase() === "GET";
 const isFileCacheRequest = (request)=>isFileRequest(request) && isGetRequest(request);
-const isFileModified = (fileEtag, ifNoneMatchHeader)=>fileEtag?.replace("/W", "") !== ifNoneMatchHeader?.replace("W/", "");
+const removeETagWeakValidator = (etag)=>etag?.replace("/W", "");
+const isFileModified = (fileETag, ifNoneMatchHeader)=>removeETagWeakValidator(fileETag) !== removeETagWeakValidator(ifNoneMatchHeader);
 const cacheMiddleware = (next)=>async (request, context = {})=>{
-        const { dir , logEnabled  } = context;
+        const { cwd , logEnabled  } = context;
         if (!isFileCacheRequest(request)) return next(request, context);
-        const fileInfo = await getFileInfo(dir, getUrlPath(request));
-        if (!isExistingLastModifiedDate(fileInfo.mtime)) return next(request.context);
+        const fileInfo = await getFileInfo(cwd, getUrlPath(request));
+        if (!existsLastModifiedDate(fileInfo.mtime)) return next(request.context);
         const fileEtag = await getFileEtag(fileInfo.mtime, fileInfo.size);
         const ifNoneMatchHeader = getIfNoneMatchHeader(request.headers);
         const fileModified = isFileModified(fileEtag, ifNoneMatchHeader);
-        if (!fileModified) logInfo(logEnabled, `cache middleware: ${getUrlPath(request)}`);
+        if (!fileModified) logInfo(logEnabled, "cache middleware:", getUrlPath(request));
         if (!fileModified) return createNotModifiedResponse();
         const response = await next(request, context);
         setETagHeader(response.headers, fileEtag);
         return response;
     };
-const ErrorTypes = Object.freeze({
-    badRequest: 0,
-    notFound: 1,
-    serverError: 2
+const getErrorType = (error)=>error instanceof URIError && "badRequest" || error instanceof Deno.errors.NotFound && "notFound";
+const createErrorResponse = Object.freeze({
+    "badRequest": createBadRequestResponse,
+    "notFound": createNotFoundResponse,
+    "serverError": createServerErrorResponse
 });
-const getErrorType = (error)=>{
-    if (error instanceof URIError) return ErrorTypes.badRequest;
-    if (error instanceof Deno.errors.NotFound) return ErrorTypes.notFound;
-    return ErrorTypes.serverError;
-};
-const createErrorResponse = (error)=>{
-    const errorType = getErrorType(error);
-    switch(errorType){
-        case ErrorTypes.badRequest:
-            return createBadRequestResponse();
-        case ErrorTypes.notFound:
-            return createNotFoundResponse();
-        case ErrorTypes.serverError:
-            return createServerErrorResponse(error.message);
-        default:
-            return createServerErrorResponse();
-    }
-};
 const SERVER_ERROR_HEADER1 = "X-Server-Error";
 const errorsMiddleware = (next)=>async (request, context = {})=>{
         const { logEnabled  } = context;
@@ -216,7 +208,8 @@ const errorsMiddleware = (next)=>async (request, context = {})=>{
             return response;
         } catch (error) {
             logError(logEnabled, error);
-            return createErrorResponse(error);
+            const errorType = getErrorType(error) || "serverError";
+            return createErrorResponse[errorType](error.message);
         }
     };
 const evalCode = async (request)=>{
@@ -251,7 +244,7 @@ const getEvalScript = (source = "script[nomodule]", target = "main")=>evalScript
 const evalMiddleware = (next)=>(request, context = {})=>{
         if (!isEvalRequest(request)) return next(request, context);
         if (isEvalCodeRequest(request)) return evalCode(request);
-        const params = toUrlSearchParamsObj(request);
+        const params = toSearchParams(request);
         const evalScript = getEvalScript(params.source, params.target);
         return createOkResponse(evalScript, getFileHeaders(evalScript, ".js"));
     };
@@ -319,12 +312,12 @@ const createIndexFileResponse = async (next, request, context)=>{
     setContentLengthHeader(fileResponse.headers, reloadHtml.length);
     return createOkResponse(reloadHtml, fileResponse.headers);
 };
-const indexPaths = [
+const RootHtmls = [
     "/",
     "/index.html",
     "/index.htm"
 ];
-const isIndexFileRequest = (request)=>indexPaths.includes(getUrlPath(request));
+const isRootFileRequest1 = (request)=>RootHtmls.includes(getUrlPath(request));
 const isWatchRequest = (request)=>getUrlPath(request).endsWith("/watch");
 const isModifiedFileEvent = (event)=>event.kind === "modify";
 const watchFiles = async (watcher, func)=>{
@@ -342,19 +335,15 @@ const debounceExec = (func, delay = 300)=>{
         }, delay);
     };
 };
-const sendReloadMessage = (socket, dir)=>debounceExec((paths)=>sendWebSocketEvent(socket, "reload", paths[0].replace(dir, "")), 300);
+const sendReloadMessage = (socket, cwd)=>debounceExec((paths)=>sendWebSocketEvent(socket, "reload", paths[0].replace(cwd, "")), 300);
 const upgradeWatchFilesSocket = (request, context)=>{
-    const { dir  } = context;
-    const watcher = Deno.watchFs(dir);
+    const { cwd  } = context;
+    const watcher = Deno.watchFs(cwd);
     const { socket , response  } = upgradeWebSocket(request, watcher, context);
-    watchFiles(watcher, sendReloadMessage(socket, dir));
+    watchFiles(watcher, sendReloadMessage(socket, cwd));
     return response;
 };
-const hmrMiddleware = (next)=>(request, context = {})=>{
-        if (isIndexFileRequest(request)) return createIndexFileResponse(next, request, context);
-        if (isWatchRequest(request)) return upgradeWatchFilesSocket(request, context);
-        return next(request, context);
-    };
+const hmrMiddleware = (next)=>(request, context = {})=>isRootFileRequest1(request) && createIndexFileResponse(next, request, context) || isWatchRequest(request) && upgradeWatchFilesSocket(request, context) || next(request, context);
 const ContextOptions = {
     cwd: Deno.cwd(),
     logEnabled: false
@@ -375,24 +364,13 @@ const addAlpnProtocolsOptions = (options)=>Object.assign(options, {
         ]
     });
 const ensureDefaultOptions = (defaults, options)=>Object.assign(defaults, options);
-const isFunction = (type)=>typeof type === "function";
-const isInstanceType = (value, type)=>value instanceof type;
-const isNullOrUndefined = (value)=>value == undefined;
-const isString = (type)=>typeof type === "string";
-const isTypeOf = (value, type)=>typeof value === type;
-const guardParam = (name, value, type)=>{
-    if (isNullOrUndefined(value)) throw new Error(`Param '${name}' value is null or undefined.`);
-    if (isFunction(type) && !isInstanceType(value, type)) throw new Error(`Param '${name}' value expect instance of '${type.name}'.`);
-    if (isString(type) && !isTypeOf(value, type)) throw new Error(`Param '${name}' expect type '${type}'`);
-    return true;
-};
 const isTlsServer = (options)=>"certFile" in options || "cert" in options;
 const startServer = (requestHandler, options = ServerOptions)=>{
-    guardParam("handler", requestHandler, "function");
     const serverOptions = ensureDefaultOptions(ServerOptions, options);
     const contextOptions = ensureDefaultOptions(ContextOptions, options.context);
     const startMessage = `${isTlsServer(options) ? "https" : "http"}://${options.hostname}:${options.port}`;
-    logInfo(true, `server address: ${startMessage}`);
+    logInfo(true, "server address", startMessage);
+    logInfo(true, "current working directory", contextOptions.cwd);
     const abortCtrl = new AbortController();
     addAbortSignalOptions(serverOptions, abortCtrl);
     isTlsServer(options) ? serveTls((request)=>requestHandler(request, contextOptions), addAlpnProtocolsOptions(serverOptions)) : serve((request)=>requestHandler(request, contextOptions), serverOptions);

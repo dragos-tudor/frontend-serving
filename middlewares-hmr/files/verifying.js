@@ -1,3 +1,2 @@
 
-export const isModifiedFileEvent = (event) =>
-  event.kind === "modify"
+export const isModifiedFileEvent = (event) => event.kind === "modify"

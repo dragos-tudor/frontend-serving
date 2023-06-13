@@ -1,3 +1,2 @@
 
-export const isTlsServer = (options) =>
-  "certFile" in options || "cert" in options
+export const isTlsServer = (options) => "certFile" in options || "cert" in options

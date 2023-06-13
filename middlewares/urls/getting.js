@@ -1,10 +1,10 @@
+import { isRootPath } from "./verifying.js"
+import { RootHtml } from "./RootHtml.js"
 
-export const getUrlPath = (request) => {
-  const url = new URL(request.url)
-  return url.pathname === "/"?
-    "/index.html":
-    url.pathname
-}
+const getUrlPathName = (url) => new URL(url).pathname
 
-export const getUrlSearchParams = (request) =>
-  new URL(request.url).search
+const getUrlSearch = (url) => new URL(url).search
+
+export const getUrlPath = (request) => isRootPath(request)? RootHtml: getUrlPathName(request.url)
+
+export const getUrlSearchParams = (request) => getUrlSearch(request.url)

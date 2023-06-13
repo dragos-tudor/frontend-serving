@@ -10,7 +10,7 @@ Deno.test("reload modified files => use hmr middleware", async (t) => {
   await Deno.writeTextFile(`${pwd}/file.js`, "")
 
   await t.step("watch directory request => change directory files => hmr middleware respond with 'reload' message", async () => {
-    const server = startHmrServer({hostname: "localhost", port: 8090, context: {dir: pwd}})
+    const server = startHmrServer({hostname: "localhost", port: 8090, context: {cwd: pwd}})
     const socket = new WebSocket("ws://localhost:8090/watch")
     const rewriteFile = (filePath) => Deno.writeTextFileSync(filePath, Deno.readTextFileSync(filePath))
 
@@ -42,7 +42,7 @@ Deno.test("reload modified files => use hmr middleware", async (t) => {
   await t.step("index file request => hmr middleware receive request => reload script injected into index file", async () => {
     const request = new Request("http://localhost")
     const next = () => createOkResponse("<body>index file</body>")
-    const response = await hmrMiddleware(next)(request, {dir: pwd})
+    const response = await hmrMiddleware(next)(request, {cwd: pwd})
     const actual = await response.text()
 
     assertEquals(response.status, 200)

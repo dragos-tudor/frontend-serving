@@ -10,20 +10,20 @@ Deno.test("reload modified files => use cache middleware", async (t) => {
 
   await t.step("cache file request => cache middleware receive request => respond '304'", async () => {
     const firstRequest = new Request("http://localhost/file.js", { method: "get" })
-    const firstResponse = await cacheMiddleware(createResponse)(firstRequest, {dir: pwd})
+    const firstResponse = await cacheMiddleware(createResponse)(firstRequest, {cwd: pwd})
 
     assertEquals(firstResponse.status, 200)
 
     const headers = new Headers({"If-None-Match": firstResponse.headers.get("ETag")})
     const cacheRequest = new Request("http://localhost/file.js", { method: "get", headers })
-    const cacheResponse = await cacheMiddleware(createResponse)(cacheRequest, {dir: pwd})
+    const cacheResponse = await cacheMiddleware(createResponse)(cacheRequest, {cwd: pwd})
 
     assertEquals(cacheResponse.status, 304)
   })
 
   await t.step("non-cache file request => cache middleware receive request => send request to next middleware", async () => {
     const request = new Request("http://localhost/file.js", { method: "get" })
-    const actual = await cacheMiddleware(createResponse)(request, {dir: pwd})
+    const actual = await cacheMiddleware(createResponse)(request, {cwd: pwd})
 
     assertEquals(actual.status, 200)
   })
@@ -48,13 +48,13 @@ Deno.test("reload modified files => use cache middleware", async (t) => {
 
   await t.step("cache index html => cache middleware receive request => respond '304'", async () => {
     const firstRequest = new Request("http://localhost/", { method: "get" })
-    const firstResponse = await cacheMiddleware(createResponse)(firstRequest, {dir: pwd})
+    const firstResponse = await cacheMiddleware(createResponse)(firstRequest, {cwd: pwd})
 
     assertEquals(firstResponse.status, 200)
 
     const headers = new Headers({"If-None-Match": firstResponse.headers.get("ETag")})
     const cacheRequest = new Request("http://localhost/", { method: "get", headers })
-    const cacheResponse = await cacheMiddleware(createResponse)(cacheRequest, {dir: pwd})
+    const cacheResponse = await cacheMiddleware(createResponse)(cacheRequest, {cwd: pwd})
 
     assertEquals(cacheResponse.status, 304)
   })

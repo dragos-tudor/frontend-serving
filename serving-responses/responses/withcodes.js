@@ -1,7 +1,6 @@
 import { CONTENT_LENGTH, CONTENT_TYPE } from "./Constants.js"
-import { toJsonBody } from "./converting.js"
-
-const APPLICATION_JSON = "application/json"
+import { toJsonBody } from "../bodies/converting.js"
+import { MediaTypes } from "../media-types/MediaTypes.js"
 
 /**
  Create http response
@@ -10,13 +9,14 @@ const APPLICATION_JSON = "application/json"
  * @param {number} statusCode Http response status.
  * @returns Return http response.
 */
-export const createResponse = (body, contentType, statusCode = 200) => new Response(body, {
-  headers: new Headers({
-    [CONTENT_LENGTH]: (body?.length ?? 0).toString(),
-    [CONTENT_TYPE]: contentType
-  }),
-  status: statusCode
-})
+export const createResponse = (body, contentType, statusCode = 200) =>
+  new Response(body, {
+    headers: new Headers({
+      [CONTENT_LENGTH]: (body?.length ?? 0).toString(),
+      [CONTENT_TYPE]: contentType
+    }),
+    status: statusCode
+  })
 
 /**
  Create http json response
@@ -24,8 +24,9 @@ export const createResponse = (body, contentType, statusCode = 200) => new Respo
  * @param {number} statusCode Http response status.
  * @returns Return http json response.
 */
-export const createJsonResponse = (body, statusCode = 200) => createResponse(
-  toJsonBody(body),
-  APPLICATION_JSON,
-  statusCode
-)
+export const createJsonResponse = (body, statusCode = 200) =>
+  createResponse(
+    toJsonBody(body),
+    MediaTypes[".json"],
+    statusCode
+  )

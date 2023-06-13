@@ -1,4 +1,4 @@
-import { toUrlSearchParamsObj } from "../../middlewares/mod.js"
+import { toSearchParams } from "../../middlewares/mod.js"
 import { getFileHeaders } from "../../middlewares-files/mod.js"
 import { createOkResponse } from "../../serving-responses/mod.js"
 import { evalCode } from "../codes/evaluating.js"
@@ -9,7 +9,7 @@ export const evalMiddleware = (next) => (request, context = {}) => {
   if(!isEvalRequest(request)) return next(request, context)
   if(isEvalCodeRequest(request)) return evalCode(request)
 
-  const params = toUrlSearchParamsObj(request)
+  const params = toSearchParams(request)
   const evalScript = getEvalScript(params.source, params.target)
   return createOkResponse(evalScript, getFileHeaders(evalScript, ".js"))
 }

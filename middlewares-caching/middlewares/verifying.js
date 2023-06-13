@@ -1,4 +1,3 @@
+import { removeETagWeakValidator } from "../headers/removing.js";
 
-export const isFileModified = (fileEtag, ifNoneMatchHeader) =>
-  fileEtag?.replace("/W", "") !==
-  ifNoneMatchHeader?.replace("W/", "")
+export const isFileModified = (fileETag, ifNoneMatchHeader) => removeETagWeakValidator(fileETag) !== removeETagWeakValidator(ifNoneMatchHeader)

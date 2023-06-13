@@ -1,5 +1,2 @@
 
-export const ContextOptions = {
-  cwd: Deno.cwd(),
-  logEnabled: false
-}
+export const ContextOptions = { cwd: Deno.cwd(), logEnabled: false }

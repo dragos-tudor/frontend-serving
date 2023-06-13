@@ -3,11 +3,11 @@ import { watchFiles } from "../files/watching.js"
 import { sendReloadMessage } from "../messages/sending.js"
 
 export const upgradeWatchFilesSocket = (request, context) => {
-  const {dir} = context
-  const watcher = Deno.watchFs(dir)
+  const {cwd} = context
+  const watcher = Deno.watchFs(cwd)
 
   const { socket, response } = upgradeWebSocket(request, watcher, context)
-  watchFiles(watcher, sendReloadMessage(socket, dir))
+  watchFiles(watcher, sendReloadMessage(socket, cwd))
 
   return response
 }

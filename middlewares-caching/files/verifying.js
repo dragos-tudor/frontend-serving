@@ -1,3 +1,2 @@
 
-export const isExistingLastModifiedDate = (lastModified) =>
-  lastModified instanceof Date
+export const existsLastModifiedDate = (lastModified) => lastModified instanceof Date

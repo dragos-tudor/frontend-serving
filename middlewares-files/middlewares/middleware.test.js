@@ -10,7 +10,7 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("ts file => files middleware receive file request => compiled js file", async () => {
     const request = new Request("http://localhost/file.ts", {method: "get"})
-    const actual = await filesMiddleware([tsCompiler])()(request, {dir: pwd})
+    const actual = await filesMiddleware([tsCompiler])()(request, {cwd: pwd})
 
     assertStringIncludes(await actual.text(), 'func = (arg)')
   })
@@ -20,7 +20,7 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("sass file => files middleware receive file request => compiled css file", async () => {
     const request = new Request("http://localhost/file.scss", {method: "get"})
-    const actual = await filesMiddleware([sassCompiler])()(request, {dir: pwd})
+    const actual = await filesMiddleware([sassCompiler])()(request, {cwd: pwd})
 
     assertStringIncludes(await actual.text(), 'div span {\n  font-size: medium;\n}')
   })
@@ -30,7 +30,7 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("file request with query string => files middleware receive request => '200' file content", async () => {
     const request = new Request("http://localhost/file.js?param=abc", {method: "get"})
-    const actual = await filesMiddleware([])()(request, {dir: pwd})
+    const actual = await filesMiddleware([])()(request, {cwd: pwd})
 
     assertEquals(await actual.text(), "const x = 1")
   })
@@ -40,7 +40,7 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("empty file request => files middleware receive request => '204' No Content", async () => {
     const request = new Request("http://localhost/empty.js", {method: "get"})
-    const actual = await filesMiddleware([])(createNoContentResponse)(request, {dir: pwd})
+    const actual = await filesMiddleware([])(createNoContentResponse)(request, {cwd: pwd})
 
     assertEquals(actual.status, 204)
   })
@@ -49,14 +49,14 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("non-file request => files middleware receive request => goto next middleware", async () => {
     const request = new Request("http://localhost/something", {method: "get"})
-    const actual = await filesMiddleware([])(createNoContentResponse)(request, {dir: pwd})
+    const actual = await filesMiddleware([])(createNoContentResponse)(request, {cwd: pwd})
 
     assertEquals(actual.status, 204)
   })
 
   await t.step("non-existing file request => files middleware receive file request => '404' Not Found", async () => {
     const request = new Request("http://localhost/non-existing.txt", {method: "get"})
-    const actual = await filesMiddleware([])()(request, {dir: pwd})
+    const actual = await filesMiddleware([])()(request, {cwd: pwd})
 
     assertEquals(actual.status, 404)
     assertStringIncludes(await actual.text(), "Not Found")
@@ -64,7 +64,7 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("non-existing jsx file request => files middleware receive file request => '404' Not Found", async () => {
     const request = new Request("http://localhost/non-existing.jsx", {method: "get"})
-    const actual = await filesMiddleware([])()(request, {dir: pwd})
+    const actual = await filesMiddleware([])()(request, {cwd: pwd})
 
     assertEquals(actual.status, 404)
     assertStringIncludes(await actual.text(), "Not Found")
@@ -74,7 +74,7 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("root request and existing 'index.html' => files middleware receive file request => 'index.html'", async () => {
     const request = new Request("http://localhost/", {method: "get"})
-    const actual = await filesMiddleware([])()(request, {dir: pwd})
+    const actual = await filesMiddleware([])()(request, {cwd: pwd})
 
     assertEquals(actual.status, 200)
     assertStringIncludes(await actual.text(), "<html>")
@@ -82,7 +82,7 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("root request with query string => files middleware receive file request => 'index.html'", async () => {
     const request = new Request("http://localhost/?test=1", {method: "get"})
-    const actual = await filesMiddleware([])()(request, {dir: pwd})
+    const actual = await filesMiddleware([])()(request, {cwd: pwd})
 
     assertEquals(actual.status, 200)
     assertStringIncludes(await actual.text(), "<html>")
@@ -101,7 +101,7 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("binary file request => files middleware receive request => default media type", async () => {
     const request = new Request("http://localhost/file.dat", {method: "get"})
-    const actual = await filesMiddleware([])()(request, {dir: pwd})
+    const actual = await filesMiddleware([])()(request, {cwd: pwd})
 
     assertEquals(actual.headers.get("content-type"), "application/octet-stream")
   })
@@ -112,7 +112,7 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("gz file request => files middleware receive request => gzip content type", async () => {
     const request = new Request("http://localhost/file.gz", {method: "get"})
-    const actual = await filesMiddleware([])()(request, {dir: pwd})
+    const actual = await filesMiddleware([])()(request, {cwd: pwd})
 
     assertEquals(actual.headers.get("content-encoding"), "gzip")
   })

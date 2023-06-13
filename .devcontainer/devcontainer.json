@@ -1,9 +1,9 @@
 {
 	"image": "devcontainer:1.0.0",
   "customizations": {
-	  "extensions": [
-		  "denoland.vscode-deno"
-	  ]
+    "vscode": {
+	    "extensions": [ "denoland.vscode-deno" ]
+    }
   },
 	"mounts": [
 	  "source=/mnt/sdc1/binaries/deno/1.34.0,target=/.deno,type=bind"

@@ -1,9 +1,7 @@
 import { getUrlPath } from "../../middlewares/mod.js"
 
-const indexPaths = ["/", "/index.html", "/index.htm"]
+const RootHtmls = ["/", "/index.html", "/index.htm"]
 
-export const isIndexFileRequest = (request) =>
-  indexPaths.includes(getUrlPath(request))
+export const isRootFileRequest = (request) => RootHtmls.includes(getUrlPath(request))
 
-export const isWatchRequest = (request) =>
-  getUrlPath(request).endsWith("/watch")
+export const isWatchRequest = (request) => getUrlPath(request).endsWith("/watch")

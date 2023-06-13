@@ -1,2 +1,2 @@
 
-export const getFileInfo = (dir, url) => Deno.stat(`${dir}${url}`)
+export const getFileInfo = (cwd, url) => Deno.stat(`${cwd}${url}`)
