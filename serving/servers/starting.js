@@ -1,4 +1,3 @@
-import { serve, serveTls } from "../../deps.js"
 import { logInfo } from "../../serving-loggers/mod.js"
 import { ContextOptions } from "../options/ContextOptions.js"
 import { ServerOptions } from "../options/ServerOptions.js"
@@ -24,7 +23,7 @@ export const startServer = (requestHandler, options = ServerOptions) => {
   addAbortSignalOptions(serverOptions, abortCtrl)
 
   isTlsServer(options)?
-    serveTls((request) => requestHandler(request, contextOptions), addAlpnProtocolsOptions(serverOptions)):
-    serve((request) => requestHandler(request, contextOptions), serverOptions)
+    Deno.serveTls(addAlpnProtocolsOptions(serverOptions), (request) => requestHandler(request, contextOptions)):
+    Deno.serve(serverOptions, (request) => requestHandler(request, contextOptions))
   return {close: () => abortCtrl.abort()}
 }

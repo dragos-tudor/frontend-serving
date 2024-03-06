@@ -1,3 +1,5 @@
+export { createCompiler } from "./compilers/creating.js"
+export { transpileTsFile, tsExtensions } from "./transpilers/transpiling.js"
 export { getFileHeaders } from "./headers/getting.js"
 export { filesMiddleware } from "./middlewares/middleware.js"
 export { isFileRequest } from "./requests/verifying.js"

@@ -1,9 +1,12 @@
 import { assertEquals, assertStringIncludes } from "/asserts.ts"
-import { dirname, sassCompiler, tsCompiler } from "../../deps.js"
+import { dirname } from "../../deps.js"
 import { createNoContentResponse } from "../../serving-responses/mod.js"
+import { createCompiler } from "../compilers/creating.js"
+import { transpileTsFile, tsExtensions } from "../transpilers/transpiling.js"
 import { filesMiddleware } from "./middleware.js"
 
 const pwd = dirname(import.meta.url.replace("file://", ""))
+const tsCompiler = createCompiler(transpileTsFile, tsExtensions)
 
 Deno.test("run files server => use files middleware", async (t) => {
   await Deno.writeTextFile(`${pwd}/file.ts`, "export const func = (arg: string) => arg")
@@ -16,16 +19,27 @@ Deno.test("run files server => use files middleware", async (t) => {
   })
 
   await Deno.remove(`${pwd}/file.ts`)
-  await Deno.writeTextFile(`${pwd}/file.scss`, "div { span { font-size: medium; } }")
 
-  await t.step("sass file => files middleware receive file request => compiled css file", async () => {
-    const request = new Request("http://localhost/file.scss", {method: "get"})
-    const actual = await filesMiddleware([sassCompiler])()(request, {cwd: pwd})
+  await Deno.writeTextFile(`${pwd}/file.jsx`, "export const A = () => <b></b>")
 
-    assertStringIncludes(await actual.text(), 'div span {\n  font-size: medium;\n}')
+  await t.step("jsx file => files middleware receive file request => compiled js file", async () => {
+    const request = new Request("http://localhost/file.jsx", {method: "get"})
+    const actual = await filesMiddleware([tsCompiler])()(request, {cwd: pwd})
+
+    assertStringIncludes(await actual.text(), 'React.createElement("b", null)')
   })
 
-  await Deno.remove(`${pwd}/file.scss`)
+  await Deno.remove(`${pwd}/file.jsx`)
+  // await Deno.writeTextFile(`${pwd}/file.scss`, "div { span { font-size: medium; } }")
+
+  // await t.step("sass file => files middleware receive file request => compiled css file", async () => {
+  //   const request = new Request("http://localhost/file.scss", {method: "get"})
+  //   const actual = await filesMiddleware([sassCompiler])()(request, {cwd: pwd})
+
+  //   assertStringIncludes(await actual.text(), 'div span {\n  font-size: medium;\n}')
+  // })
+
+  // await Deno.remove(`${pwd}/file.scss`)
   await Deno.writeTextFile(`${pwd}/file.js`, "const x = 1")
 
   await t.step("file request with query string => files middleware receive request => '200' file content", async () => {
@@ -74,6 +88,14 @@ Deno.test("run files server => use files middleware", async (t) => {
 
   await t.step("root request and existing 'index.html' => files middleware receive file request => 'index.html'", async () => {
     const request = new Request("http://localhost/", {method: "get"})
+    const actual = await filesMiddleware([])()(request, {cwd: pwd})
+
+    assertEquals(actual.status, 200)
+    assertStringIncludes(await actual.text(), "<html>")
+  })
+
+  await t.step("root path base request and existing 'index.html' => files middleware receive file request => 'index.html'", async () => {
+    const request = {url: "/index.html", method: "get"}
     const actual = await filesMiddleware([])()(request, {cwd: pwd})
 
     assertEquals(actual.status, 200)

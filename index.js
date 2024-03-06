@@ -1,9 +1,4 @@
 // deno-lint-ignore-file no-unused-vars
-const { dirname , extname  } = await import("https://cdn.deno.land/std/versions/0.189.0/raw/path/mod.ts");
-const { red , green  } = await import("https://cdn.deno.land/std/versions/0.189.0/raw/fmt/colors.ts");
-const { exists  } = await import("https://cdn.deno.land/std/versions/0.189.0/raw/fs/exists.ts");
-const { serve , serveTls  } = await import("https://deno.land/std@0.189.0/http/server.ts");
-const { sassCompiler , tsCompiler  } = await import("https://raw.githubusercontent.com/dragos-tudor/frontend-building/v0.1.0/index.js");
 const CONTENT_LENGTH = "content-length";
 const CONTENT_TYPE = "content-type";
 const HTML_EXT = ".html";
@@ -108,21 +103,26 @@ export { createJsonResponse as createJsonResponse, createResponse as createRespo
 export { MediaTypes as MediaTypes };
 const chainMiddlewares = (middlewares, lastMiddleware = createNotFoundResponse)=>Array.from(middlewares).reverse().reduce((acc, middleware)=>middleware(acc), lastMiddleware);
 const RootPath = "/";
-const isRootPath = (request)=>new URL(request.url).pathname === RootPath;
-const RootHtml = "/index.html";
-const getUrlPathName = (url)=>new URL(url).pathname;
-const getUrlSearch = (url)=>new URL(url).search;
-const getUrlPath = (request)=>isRootPath(request) ? RootHtml : getUrlPathName(request.url);
-const getUrlSearchParams = (request)=>getUrlSearch(request.url);
-const setSearchParam = (obj, param)=>{
-    const [name, value] = decodeURIComponent(param).split("=");
-    return Object.assign(obj, {
-        [name]: value
-    });
-};
-const toSearchParams = (request)=>getUrlSearchParams(request).replace("?", "").split("&").reduce(setSearchParam, {});
-const getTimeNow = ()=>new Date(Date.now()).toISOString();
-const logInfo = (enabled, ...args)=>enabled && console.info(green("[serving]"), getTimeNow(), ...args);
+const IndexHtm = "/index.htm";
+const IndexHtml = "/index.html";
+const IndexPaths = [
+    RootPath,
+    IndexHtm,
+    IndexHtml
+];
+const RootPaths = [
+    "",
+    RootPath
+];
+const getUrlPathName = (url)=>url.startsWith("http") ? new URL(url).pathname : url;
+const isRootPath = (request)=>RootPaths.includes(getUrlPathName(request.url));
+const getUrlPath = (request)=>isRootPath(request) ? IndexHtml : getUrlPathName(request.url);
+const { dirname, extname } = await import("https://deno.land/std@0.204.0/path/mod.ts");
+const { red, green } = await import("https://deno.land/std@0.204.0/fmt/colors.ts");
+const { exists } = await import("https://deno.land/std@0.204.0/fs/exists.ts");
+const { transpile } = await import("https://deno.land/x/emit@0.38.1/mod.ts");
+const getTimeNow = ()=>new Date().toISOString();
+const logInfo = (enabled, ...params)=>enabled && console.info(green("[serving]"), getTimeNow(), ...params);
 const logError = (enabled, error)=>enabled && console.error(red("[serving]"), getTimeNow(), error);
 const toHexString = (__byte)=>__byte.toString(16).padStart(2, "00");
 const getEncodedTag = (lastModified, size)=>{
@@ -145,6 +145,25 @@ const getFileInfo = (cwd, url)=>Deno.stat(`${cwd}${url}`);
 const existsLastModifiedDate = (lastModified)=>lastModified instanceof Date;
 const getIfNoneMatchHeader = (headers)=>headers.get("If-None-Match");
 const setETagHeader = (headers, etag)=>headers.set("ETag", etag);
+const createCompiler = (compileFile, extensions)=>Object.freeze({
+        compileFile,
+        extensions
+    });
+const getFileExtension = (fileName)=>extname(fileName);
+const getFilePath = (cwd, url)=>`${cwd}${url}`;
+const getFileUri = (filePath)=>filePath.replace("file://", "");
+const getTranspiledCode = (fileUri, transpilerMap)=>transpilerMap.get("file://" + fileUri);
+const tsExtensions = [
+    ".jsx",
+    ".ts",
+    ".tsx"
+];
+const transpileTsFile = async (filePath)=>{
+    const fileUri = getFileUri(filePath);
+    const transpilerMap = await transpile(fileUri);
+    const code = getTranspiledCode(filePath, transpilerMap);
+    return code;
+};
 const existsFile = (filePath)=>exists(filePath);
 const isGzipFile = (fileContent)=>fileContent[0] === 0x1F && fileContent[1] === 0x8B;
 const setHeaderContentLength = (headers, fileContent)=>headers.set("content-length", fileContent.length.toString());
@@ -158,15 +177,13 @@ const getFileHeaders = (fileContent, fileExtension)=>{
     if (isGzipFile(fileContent)) setHeaderContentEncoding(headers, "gzip");
     return headers;
 };
-const getFileExtension = (fileName)=>extname(fileName);
-const getFilePath = (cwd, url)=>`${cwd}${url}`;
 const existsFileCompiler = (compiler, fileExtension)=>compiler.extensions?.includes(fileExtension);
 const findFileCompiler = (compilers, filePath)=>compilers.find((compiler)=>existsFileCompiler(compiler, getFileExtension(filePath)));
 const isRootFileRequest = (request)=>getUrlPath(request) === "/";
 const isFileRequest = (request)=>isRootFileRequest(request) || !!extname(getUrlPath(request));
 const createFileResponse = (fileContent, fileExtension)=>fileContent.length ? createOkResponse(fileContent, getFileHeaders(fileContent, fileExtension)) : createNoContentResponse();
 const filesMiddleware = (compilers = [])=>(next)=>async (request, context = {})=>{
-            const { cwd , logEnabled  } = context;
+            const { cwd, logEnabled } = context;
             if (isFileRequest(request) === false) return next(request, context);
             const filePath = getFilePath(cwd, getUrlPath(request));
             if (!await existsFile(filePath)) return createNotFoundResponse();
@@ -177,18 +194,18 @@ const filesMiddleware = (compilers = [])=>(next)=>async (request, context = {})=
         };
 const isGetRequest = (request)=>request.method.toUpperCase() === "GET";
 const isFileCacheRequest = (request)=>isFileRequest(request) && isGetRequest(request);
-const removeETagWeakValidator = (etag)=>etag?.replace("/W", "");
+const removeETagWeakValidator = (etag)=>etag?.replace("W/", "");
 const isFileModified = (fileETag, ifNoneMatchHeader)=>removeETagWeakValidator(fileETag) !== removeETagWeakValidator(ifNoneMatchHeader);
 const cacheMiddleware = (next)=>async (request, context = {})=>{
-        const { cwd , logEnabled  } = context;
+        const { cwd, logEnabled } = context;
         if (!isFileCacheRequest(request)) return next(request, context);
         const fileInfo = await getFileInfo(cwd, getUrlPath(request));
         if (!existsLastModifiedDate(fileInfo.mtime)) return next(request.context);
         const fileEtag = await getFileEtag(fileInfo.mtime, fileInfo.size);
         const ifNoneMatchHeader = getIfNoneMatchHeader(request.headers);
-        const fileModified = isFileModified(fileEtag, ifNoneMatchHeader);
-        if (!fileModified) logInfo(logEnabled, "cache middleware:", getUrlPath(request));
-        if (!fileModified) return createNotModifiedResponse();
+        const isModified = isFileModified(fileEtag, ifNoneMatchHeader);
+        if (!isModified) logInfo(logEnabled, "cache middleware:", getUrlPath(request));
+        if (!isModified) return createNotModifiedResponse();
         const response = await next(request, context);
         setETagHeader(response.headers, fileEtag);
         return response;
@@ -201,76 +218,35 @@ const createErrorResponse = Object.freeze({
 });
 const SERVER_ERROR_HEADER1 = "X-Server-Error";
 const errorsMiddleware = (next)=>async (request, context = {})=>{
-        const { logEnabled  } = context;
+        const { logEnabled } = context;
         try {
             const response = await next(request, context);
             if (response.status === 500) logError(logEnabled, response.headers.get(SERVER_ERROR_HEADER1));
             return response;
         } catch (error) {
-            logError(logEnabled, error);
+            logError(true, error);
             const errorType = getErrorType(error) || "serverError";
             return createErrorResponse[errorType](error.message);
         }
     };
-const evalCode = async (request)=>{
-    const evalJsx = await request.text();
-    const evalOptions = {
-        args: [
-            "eval",
-            "--ext=jsx",
-            evalJsx
-        ]
-    };
-    const execPath = Deno.execPath();
-    const command = new Deno.Command(execPath, evalOptions);
-    const { code , stdout , stderr  } = await command.output();
-    const content = code === 0 ? new TextDecoder().decode(stdout) : new TextDecoder().decode(stderr);
-    return code === 0 ? createOkResponse(content, getFileHeaders(content, ".html")) : createServerErrorResponse(content);
-};
-const isEvalRequest = (request)=>getUrlPath(request).endsWith("/eval");
-const isEvalCodeRequest = (request)=>isEvalRequest(request) && getUrlSearchParams(request) === "";
-const evalScript = async (document, fetch)=>{
-    const sourceElem = document.querySelector("source");
-    const targetElem = document.querySelector("target");
-    const request = {
-        body: sourceElem.innerText,
-        method: "POST"
-    };
-    const response = await fetch("/eval", request);
-    const ssrHtml = await response.text();
-    targetElem.innerHTML = ssrHtml;
-};
-const getEvalScript = (source = "script[nomodule]", target = "main")=>evalScript.toString().split("=>")[1].replace('"source"', `"${source}"`).replace('"target"', `"${target}"`);
-const evalMiddleware = (next)=>(request, context = {})=>{
-        if (!isEvalRequest(request)) return next(request, context);
-        if (isEvalCodeRequest(request)) return evalCode(request);
-        const params = toSearchParams(request);
-        const evalScript = getEvalScript(params.source, params.target);
-        return createOkResponse(evalScript, getFileHeaders(evalScript, ".js"));
-    };
 const CONTENT_LENGTH1 = "content-length";
 const setContentLengthHeader = (headers, length)=>headers.set(CONTENT_LENGTH1, length);
-const changeLocation = (location)=>(msg)=>{
-        if (msg.name !== "reload") return location;
-        if (location.pathname === "/") {
-            location.href = `${location.origin}${location.search}`;
-            return location;
-        }
-        const search = location.search.replace("?", "&");
-        const reloadUrl = encodeURIComponent(location.pathname);
-        const reloadFile = encodeURIComponent(msg.payload);
-        location.href = `${location.origin}?reloadUrl=${reloadUrl}${search}&reloadFile=${reloadFile}`;
-        return location;
-    };
 const connectWebSocket = (location, logger)=>{
-    const wsUrl = location.origin.replace("http", "ws");
-    const wsClient = new WebSocket(wsUrl + "/watch");
-    wsClient.onopen = ()=>logger.info("[serving]", "websocket is open");
-    wsClient.onclose = ()=>logger.info("[serving]", "websocket is closed");
-    wsClient.onerror = (ex)=>logger.error("[serving]", "websocket error: ", ex);
-    wsClient.onmessage = (msg)=>changeLocation(location)(JSON.parse(msg.data));
-    wsClient.beforeunload = ()=>wsClient.close();
-    return wsClient;
+    const getWebSocketServerUrl = (location)=>location.origin.replace("http", "ws");
+    const isReloadMessage = (msg)=>toJsonObject(msg.data).name === "reload";
+    const reloadLocation = (location)=>location.reload();
+    const toJsonObject = (data)=>JSON.parse(data ?? "{}");
+    const sockerServerUrl = getWebSocketServerUrl(location);
+    const socketClient = new WebSocket(sockerServerUrl + "/watch");
+    socketClient.onopen = ()=>logger.info("[serving]", "client websocket is open");
+    socketClient.onclose = ()=>logger.info("[serving]", "client websocket is closed");
+    socketClient.onerror = (ex)=>logger.error("[serving]", "client websocket error", ex);
+    socketClient.onmessage = (msg)=>{
+        logger.info("[serving]", "client websocket message", msg.data);
+        isReloadMessage(msg) && reloadLocation(location);
+    };
+    socketClient.beforeunload = ()=>socketClient.close();
+    return socketClient;
 };
 const isOpenWebSocket = (socket)=>socket.readyState === WebSocket.OPEN;
 const sendWebSocketEvent = (socket, name, payload)=>isOpenWebSocket(socket) && socket.send(JSON.stringify({
@@ -278,15 +254,12 @@ const sendWebSocketEvent = (socket, name, payload)=>isOpenWebSocket(socket) && s
         payload
     }));
 const upgradeWebSocket = (request, resource, context = {})=>{
-    const { socket , response  } = Deno.upgradeWebSocket(request);
-    const { logEnabled  } = context;
-    socket.onopen = ()=>logInfo(logEnabled, "websocket has been open.");
+    const { socket, response } = Deno.upgradeWebSocket(request);
+    socket.onopen = ()=>logInfo(context.logEnabled, "server websocket has been open.");
+    socket.onerror = (error)=>logError(context.logEnabled, "server websocket error", error);
     socket.onclose = ()=>{
         resource?.close();
-        logInfo(logEnabled, "websocket has been closed.");
-    };
-    socket.onerror = (error)=>{
-        logError(logEnabled, error);
+        logInfo(context.logEnabled, "server websocket has been closed.");
     };
     return {
         socket,
@@ -294,9 +267,8 @@ const upgradeWebSocket = (request, resource, context = {})=>{
     };
 };
 const ReloadScript = `
-  <!-- injected by hmr middlware -->
+  <!-- injected by watch middlware -->
   <script type="text/javascript">
-    const ${changeLocation.name} = ${changeLocation.toString()}
     const ${connectWebSocket.name} = ${connectWebSocket.toString()};
     ${connectWebSocket.name}(location, console)
   </script>
@@ -312,12 +284,8 @@ const createIndexFileResponse = async (next, request, context)=>{
     setContentLengthHeader(fileResponse.headers, reloadHtml.length);
     return createOkResponse(reloadHtml, fileResponse.headers);
 };
-const RootHtmls = [
-    "/",
-    "/index.html",
-    "/index.htm"
-];
-const isRootFileRequest1 = (request)=>RootHtmls.includes(getUrlPath(request));
+const isIndexFileRequest = (request)=>IndexPaths.includes(getUrlPath(request));
+const isRouteRequest = (request)=>!extname(getUrlPath(request));
 const isWatchRequest = (request)=>getUrlPath(request).endsWith("/watch");
 const isModifiedFileEvent = (event)=>event.kind === "modify";
 const watchFiles = async (watcher, func)=>{
@@ -325,6 +293,7 @@ const watchFiles = async (watcher, func)=>{
         if (isModifiedFileEvent(event)) func(event.paths);
     }
 };
+const toUrlPath = (filePath, cwd)=>filePath.replace(cwd, "");
 const debounceExec = (func, delay = 300)=>{
     let timeoutId = 0;
     return (...args)=>{
@@ -335,15 +304,18 @@ const debounceExec = (func, delay = 300)=>{
         }, delay);
     };
 };
-const sendReloadMessage = (socket, cwd)=>debounceExec((paths)=>sendWebSocketEvent(socket, "reload", paths[0].replace(cwd, "")), 300);
+const sendReloadMessage = (socket, cwd)=>debounceExec((filePaths)=>sendWebSocketEvent(socket, "reload", toUrlPath(filePaths[0], cwd)), 300);
 const upgradeWatchFilesSocket = (request, context)=>{
-    const { cwd  } = context;
+    const { cwd } = context;
     const watcher = Deno.watchFs(cwd);
-    const { socket , response  } = upgradeWebSocket(request, watcher, context);
+    const { socket, response } = upgradeWebSocket(request, watcher, context);
     watchFiles(watcher, sendReloadMessage(socket, cwd));
     return response;
 };
-const hmrMiddleware = (next)=>(request, context = {})=>isRootFileRequest1(request) && createIndexFileResponse(next, request, context) || isWatchRequest(request) && upgradeWatchFilesSocket(request, context) || next(request, context);
+const watchMiddleware = (next)=>(request, context = {})=>isIndexFileRequest(request) && createIndexFileResponse(next, request, context) || isWatchRequest(request) && upgradeWatchFilesSocket(request, context) || isRouteRequest(request) && createIndexFileResponse(next, {
+            ...request,
+            url: IndexHtml
+        }, context) || next(request, context);
 const ContextOptions = {
     cwd: Deno.cwd(),
     logEnabled: false
@@ -373,7 +345,7 @@ const startServer = (requestHandler, options = ServerOptions)=>{
     logInfo(true, "current working directory", contextOptions.cwd);
     const abortCtrl = new AbortController();
     addAbortSignalOptions(serverOptions, abortCtrl);
-    isTlsServer(options) ? serveTls((request)=>requestHandler(request, contextOptions), addAlpnProtocolsOptions(serverOptions)) : serve((request)=>requestHandler(request, contextOptions), serverOptions);
+    isTlsServer(options) ? Deno.serveTls(addAlpnProtocolsOptions(serverOptions), (request)=>requestHandler(request, contextOptions)) : Deno.serve(serverOptions, (request)=>requestHandler(request, contextOptions));
     return {
         close: ()=>abortCtrl.abort()
     };
@@ -383,25 +355,23 @@ const filesRequestHandler = chainMiddlewares([
     errorsMiddleware,
     cacheMiddleware,
     filesMiddleware([
-        sassCompiler,
-        tsCompiler
+        createCompiler(transpileTsFile, tsExtensions)
     ])
 ]);
-const hmrRequestHandler = chainMiddlewares([
+const liveServerRequestHandler = chainMiddlewares([
     errorsMiddleware,
-    evalMiddleware,
     cacheMiddleware,
-    hmrMiddleware,
+    watchMiddleware,
     filesMiddleware([
-        sassCompiler,
-        tsCompiler
+        createCompiler(transpileTsFile, tsExtensions)
     ])
 ]);
 const startFileServer = (options)=>startServer(filesRequestHandler, options);
-const startHmrServer = (options)=>startServer(hmrRequestHandler, options);
+const startLiveServer = (options)=>startServer(liveServerRequestHandler, options);
+export { chainMiddlewares as chainMiddlewares };
 export { cacheMiddleware as cacheMiddleware };
 export { errorsMiddleware as errorsMiddleware };
 export { filesMiddleware as filesMiddleware };
-export { hmrMiddleware as hmrMiddleware };
+export { watchMiddleware as watchMiddleware };
 export { startFileServer as startFileServer };
-export { startHmrServer as startHmrServer };
+export { startLiveServer as startLiveServer };

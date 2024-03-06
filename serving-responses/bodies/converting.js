@@ -1,4 +1,4 @@
-import { existsBody, isStringBody } from "./verifyimg.js"
+import { existsBody, isStringBody } from "./verifying.js"
 
 export const toJsonBody = (body) =>
   (isStringBody(body) && body) ||

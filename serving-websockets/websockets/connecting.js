@@ -1,14 +1,21 @@
-import { changeLocation } from "../locations/changing.js"
 
-export const connectWebSocket = (location, logger) => {
-  const wsUrl = location.origin.replace("http", "ws")
-  const wsClient = new WebSocket(wsUrl + "/watch")
+export const connectWebSocket = (location, logger) =>
+{
+  const getWebSocketServerUrl = (location) => location.origin.replace("http", "ws")
+  const isReloadMessage = (msg) => toJsonObject(msg.data).name === "reload"
+  const reloadLocation = (location) => location.reload()
+  const toJsonObject = (data) => JSON.parse(data ?? "{}")
 
-  wsClient.onopen = () => logger.info("[serving]", "websocket is open")
-  wsClient.onclose = () => logger.info("[serving]", "websocket is closed")
-  wsClient.onerror = (ex) => logger.error("[serving]", "websocket error: ", ex)
-  wsClient.onmessage = (msg) => changeLocation(location)(JSON.parse(msg.data))
-  wsClient.beforeunload = () => wsClient.close()
+  const sockerServerUrl = getWebSocketServerUrl(location)
+  const socketClient = new WebSocket(sockerServerUrl + "/watch")
 
-  return wsClient
+  socketClient.onopen = () => logger.info("[serving]", "client websocket is open")
+  socketClient.onclose = () => logger.info("[serving]", "client websocket is closed")
+  socketClient.onerror = (ex) => logger.error("[serving]", "client websocket error", ex)
+  socketClient.onmessage = (msg) => { logger.info("[serving]", "client websocket message", msg.data);
+    isReloadMessage(msg) && reloadLocation(location)
+  }
+  socketClient.beforeunload = () => socketClient.close()
+
+  return socketClient
 }

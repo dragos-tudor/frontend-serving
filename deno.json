@@ -2,8 +2,7 @@
   "importMap": "./deps_map.json",
   "tasks": {
     "bundle": "deno run --allow-all --no-check ./bundling.js",
-    "coverage": "deno run --allow-all --unstable --no-check ./coveraging.js",
-    "serve": "deno run --allow-all --no-check --unstable ./serving.js",
-    "test": "deno test --allow-all --no-check --unstable --parallel"
+    "serve": "deno run --allow-all --no-check ./serving.js",
+    "test": "deno test --allow-all --no-check --parallel"
   }
 }

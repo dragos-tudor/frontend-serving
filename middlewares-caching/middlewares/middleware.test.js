@@ -14,7 +14,7 @@ Deno.test("reload modified files => use cache middleware", async (t) => {
 
     assertEquals(firstResponse.status, 200)
 
-    const headers = new Headers({"If-None-Match": firstResponse.headers.get("ETag")})
+    const headers = new Headers({"If-None-Match": "W/" + firstResponse.headers.get("ETag")})
     const cacheRequest = new Request("http://localhost/file.js", { method: "get", headers })
     const cacheResponse = await cacheMiddleware(createResponse)(cacheRequest, {cwd: pwd})
 

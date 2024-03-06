@@ -19,10 +19,10 @@ export const cacheMiddleware = (next) => async (request, context = {}) => {
   const fileEtag = await getFileEtag(fileInfo.mtime, fileInfo.size)
 
   const ifNoneMatchHeader = getIfNoneMatchHeader(request.headers)
-  const fileModified = isFileModified(fileEtag, ifNoneMatchHeader)
+  const isModified = isFileModified(fileEtag, ifNoneMatchHeader)
 
-  if(!fileModified) logInfo(logEnabled, "cache middleware:", getUrlPath(request))
-  if(!fileModified) return createNotModifiedResponse()
+  if(!isModified) logInfo(logEnabled, "cache middleware:", getUrlPath(request))
+  if(!isModified) return createNotModifiedResponse()
 
   const response = await next(request, context)
   setETagHeader(response.headers, fileEtag)

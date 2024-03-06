@@ -13,7 +13,7 @@ export const errorsMiddleware = (next) => async (request, context = {}) => {
     return response
   }
   catch (error) {
-    logError(logEnabled, error)
+    logError(true, error)
     const errorType = getErrorType(error) || "serverError"
     return createErrorResponse[errorType](error.message)
   }

@@ -1,4 +1,3 @@
-export { changeLocation } from "./locations/changing.js"
 export { connectWebSocket } from "./websockets/connecting.js"
 export { sendWebSocketEvent } from "./websockets/sending.js"
 export { upgradeWebSocket } from "./websockets/upgrading.js"

@@ -4,8 +4,7 @@
 - single library, mono repo.
 
 ### [Serving library](./serving/)
-- used as *Hot Module Replacement server* for web development.
-- used as *File server* for integration testing.
+- used as *Live server* for integration testing.
 
 #### [Files middleware](./middlewares-files/)
 - handle file requests.
@@ -22,7 +21,7 @@
 - should be used before files middleware.
 - not intent to be used without files middleware.
 
-#### [HMR middleware](./middlewares-hmr/)
+#### [Watch middleware](./middlewares-watch/)
 - handle *watch* requests accepting client websocket connections.
 - based on websocket bidirectional server-client communication.
 - watch for files changes sending *reload* command to client.
@@ -34,9 +33,6 @@
 - handle and log uncatched errors.
 - should be the first middleware.
 
-#### [Evaluating middleware](./middlewares-evaluating/)
-- server side js code evaluation.
-
 #### Observations
 - based on *middlewares architecture* [similar to ASPNET midlewares].
 - middlewares are chained to build request/response http pipes.
@@ -44,9 +40,3 @@
 - Deno test runner use parallel workers [# of cpus] when run with *--jobs* option.
 - Deno test runner use one thread for each test file. Starting servers on the same ports for different testing files should result errors.
 - [usage samples](./serving/servers/starting.test.js).
-
-### Credits
-- [deno - denoland team](https://github.com/denoland/deno).
-- [deno standard libraries - denoland team](https://github.com/denoland/deno_std).
-- [deno sass - Nassim Zen](https://github.com/hironichu/denosass).
-- [dart sass - sass team](https://github.com/sass/dart-sass).

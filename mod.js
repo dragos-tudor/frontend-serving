@@ -1,31 +1,29 @@
-import { tsCompiler, sassCompiler } from "./deps.js"
 import { chainMiddlewares } from "./middlewares/mod.js"
 import { cacheMiddleware } from "./middlewares-caching/mod.js"
 import { errorsMiddleware } from "./middlewares-errors/mod.js"
-import { evalMiddleware } from "./middlewares-evaluating/mod.js"
-import { filesMiddleware } from "./middlewares-files/mod.js"
-import { hmrMiddleware } from "./middlewares-hmr/mod.js"
+import { createCompiler, filesMiddleware, transpileTsFile, tsExtensions } from "./middlewares-files/mod.js"
+import { watchMiddleware } from "./middlewares-watch/mod.js"
 import { startServer } from "./serving/mod.js"
 
 const filesRequestHandler = chainMiddlewares([
   errorsMiddleware,
   cacheMiddleware,
-  filesMiddleware([sassCompiler, tsCompiler])
+  filesMiddleware([createCompiler(transpileTsFile, tsExtensions)])
 ])
 
-const hmrRequestHandler = chainMiddlewares([
+const liveServerRequestHandler = chainMiddlewares([
   errorsMiddleware,
-  evalMiddleware,
   cacheMiddleware,
-  hmrMiddleware,
-  filesMiddleware([sassCompiler, tsCompiler])
+  watchMiddleware,
+  filesMiddleware([createCompiler(transpileTsFile, tsExtensions)])
 ])
 
 export const startFileServer = (options) => startServer(filesRequestHandler, options)
-export const startHmrServer = (options) => startServer(hmrRequestHandler, options)
+export const startLiveServer = (options) => startServer(liveServerRequestHandler, options)
 export * from "./serving/mod.js"
 export * from "./serving-responses/mod.js"
+export { chainMiddlewares } from "./middlewares/mod.js"
 export { cacheMiddleware } from "./middlewares-caching/mod.js"
 export { errorsMiddleware } from "./middlewares-errors/mod.js"
 export { filesMiddleware } from "./middlewares-files/mod.js"
-export { hmrMiddleware } from "./middlewares-hmr/mod.js"
+export { watchMiddleware } from "./middlewares-watch/mod.js"

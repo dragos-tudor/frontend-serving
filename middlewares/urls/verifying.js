@@ -1,3 +1,6 @@
-import { RootPath } from "./RootPath.js"
+import { RootPath } from "../indexes.js"
+import { getUrlPathName } from "./getting.js"
 
-export const isRootPath = (request) => new URL(request.url).pathname === RootPath
+const RootPaths = ["", RootPath]
+
+export const isRootPath = (request)=>RootPaths.includes(getUrlPathName(request.url));
