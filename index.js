@@ -17,7 +17,8 @@ const MediaTypes = {
     ".sass": "text/css",
     ".woff": "font/woff",
     ".woff2": "font/woff2",
-    ".ico": "image/x-icon"
+    ".ico": "image/x-icon",
+    ".svg": "image/svg+xml"
 };
 const BAD_REQUEST = "Bad Request";
 const createBadRequestResponse = ()=>new Response(BAD_REQUEST, {
@@ -329,12 +330,6 @@ const addAbortSignalOptions = (options, abortCtrl)=>Object.assign(options, {
         signal: abortCtrl.signal,
         onListen: ()=>{}
     });
-const addAlpnProtocolsOptions = (options)=>Object.assign(options, {
-        alpnProtocols: [
-            "h2",
-            "http/1.1"
-        ]
-    });
 const ensureDefaultOptions = (defaults, options)=>Object.assign(defaults, options);
 const isTlsServer = (options)=>"certFile" in options || "cert" in options;
 const startServer = (requestHandler, options = ServerOptions)=>{
@@ -345,7 +340,7 @@ const startServer = (requestHandler, options = ServerOptions)=>{
     logInfo(true, "current working directory", contextOptions.cwd);
     const abortCtrl = new AbortController();
     addAbortSignalOptions(serverOptions, abortCtrl);
-    isTlsServer(options) ? Deno.serveTls(addAlpnProtocolsOptions(serverOptions), (request)=>requestHandler(request, contextOptions)) : Deno.serve(serverOptions, (request)=>requestHandler(request, contextOptions));
+    Deno.serve(serverOptions, (request)=>requestHandler(request, contextOptions));
     return {
         close: ()=>abortCtrl.abort()
     };

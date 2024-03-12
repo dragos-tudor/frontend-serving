@@ -1,7 +1,7 @@
 import { logInfo } from "../../serving-loggers/mod.js"
 import { ContextOptions } from "../options/ContextOptions.js"
 import { ServerOptions } from "../options/ServerOptions.js"
-import { addAbortSignalOptions, addAlpnProtocolsOptions } from "../options/adding.js"
+import { addAbortSignalOptions } from "../options/adding.js"
 import { ensureDefaultOptions } from "../options/ensuring.js"
 import { isTlsServer } from "./verifying.js"
 
@@ -22,8 +22,6 @@ export const startServer = (requestHandler, options = ServerOptions) => {
   const abortCtrl = new AbortController()
   addAbortSignalOptions(serverOptions, abortCtrl)
 
-  isTlsServer(options)?
-    Deno.serveTls(addAlpnProtocolsOptions(serverOptions), (request) => requestHandler(request, contextOptions)):
-    Deno.serve(serverOptions, (request) => requestHandler(request, contextOptions))
+  Deno.serve(serverOptions, (request) => requestHandler(request, contextOptions))
   return {close: () => abortCtrl.abort()}
 }
