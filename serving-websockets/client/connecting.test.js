@@ -1,8 +1,8 @@
 import { spy, assertSpyCalls } from "/mock.ts"
 import { startServer } from "../../serving/mod.js"
+import { sendWebSocketEvent } from "../server/sending.js"
+import { upgradeWebSocket } from "../server/upgrading.js"
 import { connectWebSocket } from "./connecting.js"
-import { sendWebSocketEvent } from "./sending.js"
-import { upgradeWebSocket } from "./upgrading.js"
 
 
 const startTestServer = (func, options) =>

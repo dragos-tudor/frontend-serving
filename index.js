@@ -295,25 +295,23 @@ const watchFiles = async (watcher, func)=>{
     }
 };
 const toUrlPath = (filePath, cwd)=>filePath.replace(cwd, "");
-const debounceExec = (func, delay = 300)=>{
+const defaultDelay = 1000;
+const debounceExec = (func, delay)=>{
     let timeoutId = 0;
     return (...args)=>{
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(()=>{
-            clearTimeout(timeoutId);
-            func(...args);
-        }, delay);
+        timeoutId = setTimeout(()=>(clearTimeout(timeoutId), func(...args)), delay ?? defaultDelay);
     };
 };
-const sendReloadMessage = (socket, cwd)=>debounceExec((filePaths)=>sendWebSocketEvent(socket, "reload", toUrlPath(filePaths[0], cwd)), 300);
-const upgradeWatchFilesSocket = (request, context)=>{
-    const { cwd } = context;
+const sendReloadMessage = (socket, cwd, delay)=>debounceExec((filePaths)=>sendWebSocketEvent(socket, "reload", toUrlPath(filePaths[0], cwd)), delay);
+const upgradeWatchSocket = (request, context)=>{
+    const { cwd, watchDelay } = context;
     const watcher = Deno.watchFs(cwd);
     const { socket, response } = upgradeWebSocket(request, watcher, context);
-    watchFiles(watcher, sendReloadMessage(socket, cwd));
+    watchFiles(watcher, sendReloadMessage(socket, cwd, watchDelay));
     return response;
 };
-const watchMiddleware = (next)=>(request, context = {})=>isIndexFileRequest(request) && createIndexFileResponse(next, request, context) || isWatchRequest(request) && upgradeWatchFilesSocket(request, context) || isRouteRequest(request) && createIndexFileResponse(next, {
+const watchMiddleware = (next)=>(request, context = {})=>isIndexFileRequest(request) && createIndexFileResponse(next, request, context) || isWatchRequest(request) && upgradeWatchSocket(request, context) || isRouteRequest(request) && createIndexFileResponse(next, {
             ...request,
             url: IndexHtml
         }, context) || next(request, context);

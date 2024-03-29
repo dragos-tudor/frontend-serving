@@ -1,6 +1,7 @@
 import { logError, logInfo } from "../../serving-loggers/mod.js"
 
-export const upgradeWebSocket = (request, resource, context = {}) => {
+export const upgradeWebSocket = (request, resource, context = {}) =>
+{
   const {socket, response} = Deno.upgradeWebSocket(request)
 
   socket.onopen = () => logInfo(context.logEnabled, "server websocket has been open.")

@@ -1,4 +1,4 @@
-export { connectWebSocket } from "./websockets/connecting.js"
-export { sendWebSocketEvent } from "./websockets/sending.js"
-export { upgradeWebSocket } from "./websockets/upgrading.js"
-export { isOpenWebSocket } from "./websockets/verifying.js"
+export { connectWebSocket } from "./client/connecting.js"
+export { sendWebSocketEvent } from "./server/sending.js"
+export { upgradeWebSocket } from "./server/upgrading.js"
+export { isOpenWebSocket } from "./server/verifying.js"
