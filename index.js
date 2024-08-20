@@ -159,9 +159,9 @@ const tsExtensions = [
     ".ts",
     ".tsx"
 ];
-const transpileTsFile = async (filePath)=>{
+const transpileTsFile = async (filePath, transpilerOptions)=>{
     const fileUri = getFileUri(filePath);
-    const transpilerMap = await transpile(fileUri);
+    const transpilerMap = await transpile(fileUri, transpilerOptions);
     const code = getTranspiledCode(filePath, transpilerMap);
     return code;
 };
@@ -184,12 +184,12 @@ const isRootFileRequest = (request)=>getUrlPath(request) === "/";
 const isFileRequest = (request)=>isRootFileRequest(request) || !!extname(getUrlPath(request));
 const createFileResponse = (fileContent, fileExtension)=>fileContent.length ? createOkResponse(fileContent, getFileHeaders(fileContent, fileExtension)) : createNoContentResponse();
 const filesMiddleware = (compilers = [])=>(next)=>async (request, context = {})=>{
-            const { cwd, logEnabled } = context;
+            const { cwd, logEnabled, transpilerOptions } = context;
             if (isFileRequest(request) === false) return next(request, context);
             const filePath = getFilePath(cwd, getUrlPath(request));
             if (!await existsFile(filePath)) return createNotFoundResponse();
             const compiler = findFileCompiler(compilers, filePath);
-            const fileContent = await (compiler?.compileFile || Deno.readFile)(filePath);
+            const fileContent = await (compiler ? compiler.compileFile(filePath, transpilerOptions) : Deno.readFile(filePath));
             logInfo(logEnabled, "files middleware:", getUrlPath(request));
             return createFileResponse(fileContent, getFileExtension(filePath));
         };

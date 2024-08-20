@@ -9,7 +9,7 @@ import { createFileResponse } from "../responses/creating.js"
 
 
 export const filesMiddleware = (compilers = []) => (next) => async (request, context = {}) => {
-  const {cwd, logEnabled} = context
+  const {cwd, logEnabled, transpilerOptions} = context
 
   if(isFileRequest(request) === false) return next(request, context)
   const filePath = getFilePath(cwd, getUrlPath(request))
@@ -17,7 +17,7 @@ export const filesMiddleware = (compilers = []) => (next) => async (request, con
   if(!await existsFile(filePath)) return createNotFoundResponse()
 
   const compiler = findFileCompiler(compilers, filePath)
-  const fileContent = await (compiler?.compileFile || Deno.readFile)(filePath)
+  const fileContent = await (compiler? compiler.compileFile(filePath, transpilerOptions): Deno.readFile(filePath))
 
   logInfo(logEnabled, "files middleware:", getUrlPath(request))
   return createFileResponse(fileContent, getFileExtension(filePath))

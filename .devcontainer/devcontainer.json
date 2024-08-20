@@ -1,0 +1,18 @@
+{
+	"image": "ghcr.io/dragos-tudor/deno:1.45.2",
+  "customizations": {
+    "vscode": {
+	    "extensions": [
+	    	"denoland.vscode-deno"
+	    ]
+    }
+  },
+  "mounts": [
+    {"source": "deno-cache", "target": "/deno-dir", "type": "volume"}
+  ],
+	"containerEnv": { "DENO_AUTH_TOKENS": "${localEnv:GITHUB_TOKEN}@raw.githubusercontent.com" },
+	"runArgs": [
+		"--name=frontend-serving",
+		"--hostname=serving"
+	]
+}
