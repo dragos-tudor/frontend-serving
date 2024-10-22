@@ -1,4 +1,4 @@
-export const { dirname, extname } = await import("https://deno.land/std@0.204.0/path/mod.ts")
-export const { red, green } = await import("https://deno.land/std@0.204.0/fmt/colors.ts")
-export const { exists } = await import("https://deno.land/std@0.204.0/fs/exists.ts")
-export const { transpile } = await import("https://deno.land/x/emit@0.38.1/mod.ts")
+export const { dirname, extname } = await import("jsr:@std/path@1.0.6")
+export const { red, green } = await import("jsr:@std/fmt@1.0.2/colors")
+export const { exists } = await import("jsr:@std/fs@1.0.4/exists")
+export const { transpile } = await import("jsr:@deno/emit@0.45.0")

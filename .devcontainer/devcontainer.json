@@ -1,5 +1,5 @@
 {
-	"image": "ghcr.io/dragos-tudor/deno:1.45.2",
+	"image": "ghcr.io/dragos-tudor/deno:2.0.2",
   "customizations": {
     "vscode": {
 	    "extensions": [
@@ -8,7 +8,7 @@
     }
   },
   "mounts": [
-    {"source": "deno-cache", "target": "/deno-dir", "type": "volume"}
+    {"source": "deno-cache", "target": "/home/app/.deno-cache", "type": "volume"}
   ],
 	"containerEnv": { "DENO_AUTH_TOKENS": "${localEnv:GITHUB_TOKEN}@raw.githubusercontent.com" },
 	"runArgs": [

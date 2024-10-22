@@ -118,10 +118,10 @@ const RootPaths = [
 const getUrlPathName = (url)=>url.startsWith("http") ? new URL(url).pathname : url;
 const isRootPath = (request)=>RootPaths.includes(getUrlPathName(request.url));
 const getUrlPath = (request)=>isRootPath(request) ? IndexHtml : getUrlPathName(request.url);
-const { dirname, extname } = await import("https://deno.land/std@0.204.0/path/mod.ts");
-const { red, green } = await import("https://deno.land/std@0.204.0/fmt/colors.ts");
-const { exists } = await import("https://deno.land/std@0.204.0/fs/exists.ts");
-const { transpile } = await import("https://deno.land/x/emit@0.38.1/mod.ts");
+const { dirname, extname } = await import("jsr:@std/path@1.0.6");
+const { red, green } = await import("jsr:@std/fmt@1.0.2/colors");
+const { exists } = await import("jsr:@std/fs@1.0.4/exists");
+const { transpile } = await import("jsr:@deno/emit@0.45.0");
 const getTimeNow = ()=>new Date().toISOString();
 const logInfo = (enabled, ...params)=>enabled && console.info(green("[serving]"), getTimeNow(), ...params);
 const logError = (enabled, error)=>enabled && console.error(red("[serving]"), getTimeNow(), error);
