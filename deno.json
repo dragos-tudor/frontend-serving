@@ -3,6 +3,6 @@
   "tasks": {
     "bundle": "deno run --allow-all --no-check ./bundling.js",
     "serve": "deno run --allow-all --no-check ./serving.js",
-    "test": "deno test --allow-all --no-check --parallel"
+    "test": "deno test --allow-all --no-check --parallel \"$INIT_CWD\""
   }
 }
